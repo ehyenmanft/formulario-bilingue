@@ -113,6 +113,24 @@ function initForm() {
   grid.innerHTML = '';
 
   FORM_CONFIG.preguntas.forEach(q => {
+    if (q.tipo === 'section') {
+      const sectionBlock = document.createElement('div');
+      sectionBlock.className = 'section-header-block col-12';
+      sectionBlock.id = `block_${q.id}`;
+      sectionBlock.innerHTML = `
+        <div class="section-header-content">
+          <div class="section-pill">
+            <span class="pulse-dot"></span>
+            <span class="section-label">SECCIÓN</span>
+          </div>
+          <h2 class="section-title title-text">${q.titulo[currentLang]}</h2>
+          ${q.ayuda ? `<p class="section-help question-help">${q.ayuda[currentLang]}</p>` : ''}
+        </div>
+      `;
+      grid.appendChild(sectionBlock);
+      return;
+    }
+
     const block = document.createElement('div');
     block.className = `question-block col-${q.colSpan || 12}`;
     block.id = `block_${q.id}`;
@@ -391,6 +409,8 @@ async function handleFormSubmit(event) {
 
   const respuestas = [];
   FORM_CONFIG.preguntas.forEach(q => {
+    if (q.tipo === 'section') return;
+
     if (q.tipo === 'file') {
       const archivoObj = uploadedFiles[q.id];
       respuestas.push({
