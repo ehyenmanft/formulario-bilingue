@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR PRINCIPAL DE LA APLICACIÓN WEB
+ * CONTROLADOR PRINCIPAL DE LA APLICACIÓN WEB - AMAZONA FITNESS
  */
 
 let currentLang = 'es';
@@ -8,34 +8,36 @@ const uploadedFiles = {}; // Guarda { [questionId]: { nombre, tipoMime, base64, 
 
 const I18N = {
   es: {
-    brandStatus: "Formulario Activo",
+    brandStatus: "Amazona Fitness",
     requiredLegend: "Campos obligatorios",
     submitBtn: "Enviar respuesta",
-    submittingBtn: "Subiendo comprobante y enviando...",
-    successHeading: "¡Respuesta y Comprobante Registrados!",
-    successBody: "Tus datos y comprobante han sido guardados en Google Drive y vinculados a Google Sheets.",
+    submittingBtn: "Enviando respuesta y comprobante...",
+    successHeading: "¡Gracias por completar tu evaluación!",
+    successBody: "Tus respuestas y comprobante han sido recibidos con éxito. Estaremos en contacto muy pronto para entregarte tu plan personalizado.",
+    coachReachText: "Ponte en contacto directo o síguenos para comenzar:",
     btnNewResponse: "Enviar otra respuesta",
     selectDefault: "-- Selecciona una opción --",
-    alertRequired: "Por favor completa todos los campos requeridos marcados con *",
+    alertTitle: "Por favor completa los siguientes campos obligatorios:",
     dropzoneTitle: "Haz clic o arrastra tu comprobante aquí",
     dropzoneHint: "Formatos permitidos: JPG, PNG, WEBP o PDF (máx. 10MB)",
     fileSelected: "Comprobante cargado",
-    footerText: "Conexión directa segura con Google Workspace & Drive"
+    footerText: "Amazona Fitness • Gil Reverand • Conexión directa con Google Sheets"
   },
   en: {
-    brandStatus: "Live Form",
+    brandStatus: "Amazona Fitness",
     requiredLegend: "Required fields",
     submitBtn: "Submit response",
-    submittingBtn: "Uploading receipt & saving...",
-    successHeading: "Response & Receipt Recorded!",
-    successBody: "Your data and receipt have been stored in Google Drive and linked to Google Sheets.",
+    submittingBtn: "Submitting response & receipt...",
+    successHeading: "Thank you for completing your evaluation!",
+    successBody: "Your responses and receipt have been successfully received. We will be in touch shortly to deliver your personalized plan.",
+    coachReachText: "Get in direct touch or follow us to get started:",
     btnNewResponse: "Submit another response",
     selectDefault: "-- Select an option --",
-    alertRequired: "Please complete all required fields marked with *",
+    alertTitle: "Please complete the following required fields:",
     dropzoneTitle: "Click or drag your receipt here",
     dropzoneHint: "Allowed formats: JPG, PNG, WEBP or PDF (max 10MB)",
     fileSelected: "Receipt loaded",
-    footerText: "Secure direct connection with Google Workspace & Drive"
+    footerText: "Amazona Fitness • Gil Reverand • Direct Google Sheets Connection"
   }
 };
 
@@ -89,10 +91,19 @@ function setLanguage(lang) {
   document.getElementById('brand-status').innerText = I18N[lang].brandStatus;
   document.getElementById('text-required-legend').innerText = I18N[lang].requiredLegend;
   document.getElementById('btn-text').innerText = I18N[lang].submitBtn;
+  
   const successTitle = document.getElementById('success-title');
   if (successTitle) successTitle.innerText = I18N[lang].successHeading;
+  
   const successMsg = document.getElementById('success-message');
   if (successMsg) successMsg.innerText = I18N[lang].successBody;
+
+  const coachReach = document.getElementById('coach-reach-text');
+  if (coachReach) coachReach.innerText = I18N[lang].coachReachText;
+
+  const alertTitle = document.getElementById('alert-title');
+  if (alertTitle) alertTitle.innerText = I18N[lang].alertTitle;
+
   document.getElementById('btn-new-response').innerText = I18N[lang].btnNewResponse;
   document.getElementById('footer-text').innerText = I18N[lang].footerText;
 
@@ -113,6 +124,7 @@ function initForm() {
   grid.innerHTML = '';
 
   FORM_CONFIG.preguntas.forEach(q => {
+    // Encabezados de Sección
     if (q.tipo === 'section') {
       const sectionBlock = document.createElement('div');
       sectionBlock.className = 'section-header-block col-12';
@@ -165,19 +177,19 @@ function initForm() {
               </svg>
             </button>
           </div>
-          <input type="hidden" id="input_${q.id}" name="${q.id}" ${q.requerido ? 'required' : ''} />
+          <input type="hidden" id="input_${q.id}" name="${q.id}" />
         </div>
       `;
     }
     else if (q.tipo === 'text') {
-      inputHtml = `<input type="${q.inputType || 'text'}" id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" ${q.requerido ? 'required' : ''} />`;
+      inputHtml = `<input type="${q.inputType || 'text'}" id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" oninput="clearError('${q.id}')" />`;
     } 
     else if (q.tipo === 'textarea') {
-      inputHtml = `<textarea id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" ${q.requerido ? 'required' : ''}></textarea>`;
+      inputHtml = `<textarea id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" oninput="clearError('${q.id}')"></textarea>`;
     } 
     else if (q.tipo === 'select') {
       inputHtml = `
-        <select id="input_${q.id}" name="${q.id}" ${q.requerido ? 'required' : ''}>
+        <select id="input_${q.id}" name="${q.id}" onchange="clearError('${q.id}')">
           <option value="">${I18N[currentLang].selectDefault}</option>
           ${q.opciones[currentLang].map((opt, i) => `<option value="${q.opciones['es'][i]}">${opt}</option>`).join('')}
         </select>
@@ -188,7 +200,7 @@ function initForm() {
         <div class="pills-grid">
           ${q.opciones[currentLang].map((opt, i) => `
             <label class="pill-card">
-              <input type="radio" name="${q.id}" value="${q.opciones['es'][i]}" ${q.requerido ? 'required' : ''} />
+              <input type="radio" name="${q.id}" value="${q.opciones['es'][i]}" onchange="clearError('${q.id}')" />
               <span class="opt-label" data-index="${i}">${opt}</span>
             </label>
           `).join('')}
@@ -200,7 +212,7 @@ function initForm() {
         <div class="pills-grid">
           ${q.opciones[currentLang].map((opt, i) => `
             <label class="pill-card">
-              <input type="checkbox" name="${q.id}" value="${q.opciones['es'][i]}" />
+              <input type="checkbox" name="${q.id}" value="${q.opciones['es'][i]}" onchange="clearError('${q.id}')" />
               <span class="opt-label" data-index="${i}">${opt}</span>
             </label>
           `).join('')}
@@ -213,7 +225,7 @@ function initForm() {
       for (let v = bounds.min; v <= bounds.max; v++) {
         buttons += `
           <label class="scale-button">
-            <input type="radio" name="${q.id}" value="${v}" ${q.requerido ? 'required' : ''} />
+            <input type="radio" name="${q.id}" value="${v}" onchange="clearError('${q.id}')" />
             <span>${v}</span>
           </label>
         `;
@@ -244,7 +256,6 @@ function initForm() {
 
     grid.appendChild(block);
 
-    // Si es tipo archivo, habilitar eventos de Drag & Drop
     if (q.tipo === 'file') {
       setupDropzone(q.id);
     }
@@ -256,7 +267,9 @@ function updateQuestionTexts() {
     const block = document.getElementById(`block_${q.id}`);
     if (!block) return;
 
-    block.querySelector('.title-text').innerText = q.titulo[currentLang];
+    const titleElem = block.querySelector('.title-text');
+    if (titleElem) titleElem.innerText = q.titulo[currentLang];
+
     const help = block.querySelector('.question-help');
     if (help && q.ayuda) help.innerText = q.ayuda[currentLang];
 
@@ -272,16 +285,20 @@ function updateQuestionTexts() {
     } 
     else if (q.tipo === 'select') {
       const select = block.querySelector('select');
-      select.options[0].text = I18N[currentLang].selectDefault;
-      q.opciones[currentLang].forEach((opt, idx) => {
-        if (select.options[idx + 1]) select.options[idx + 1].text = opt;
-      });
+      if (select && select.options.length > 0) {
+        select.options[0].text = I18N[currentLang].selectDefault;
+        q.opciones[currentLang].forEach((opt, idx) => {
+          if (select.options[idx + 1]) select.options[idx + 1].text = opt;
+        });
+      }
     } 
     else if (q.tipo === 'pills-radio' || q.tipo === 'pills-checkbox') {
       const labels = block.querySelectorAll('.opt-label');
       labels.forEach(label => {
         const idx = parseInt(label.getAttribute('data-index'), 10);
-        label.innerText = q.opciones[currentLang][idx];
+        if (q.opciones[currentLang][idx]) {
+          label.innerText = q.opciones[currentLang][idx];
+        }
       });
     } 
     else if (q.tipo === 'scale') {
@@ -291,6 +308,84 @@ function updateQuestionTexts() {
       if (right) right.innerText = q.scaleBounds.rightLabel[currentLang] || '';
     }
   });
+}
+
+// ==========================================
+// VALIDACIÓN INTELIGENTE DE CAMPOS
+// ==========================================
+function clearError(questionId) {
+  const block = document.getElementById(`block_${questionId}`);
+  if (block) block.classList.remove('has-error');
+
+  // Si ya no quedan errores, ocultar banner
+  if (document.querySelectorAll('.question-block.has-error').length === 0) {
+    const alertBox = document.getElementById('validation-alert');
+    if (alertBox) alertBox.style.display = 'none';
+  }
+}
+
+function validateForm() {
+  const missing = [];
+
+  FORM_CONFIG.preguntas.forEach(q => {
+    if (q.tipo === 'section' || !q.requerido) return;
+
+    let isFilled = false;
+
+    if (q.tipo === 'file') {
+      isFilled = !!uploadedFiles[q.id];
+    } else if (q.tipo === 'pills-checkbox') {
+      isFilled = document.querySelectorAll(`input[name="${q.id}"]:checked`).length > 0;
+    } else if (q.tipo === 'pills-radio' || q.tipo === 'scale') {
+      isFilled = document.querySelector(`input[name="${q.id}"]:checked`) !== null;
+    } else {
+      const elem = document.querySelector(`[name="${q.id}"]`);
+      isFilled = elem && elem.value && elem.value.trim() !== '';
+    }
+
+    const block = document.getElementById(`block_${q.id}`);
+    if (!isFilled) {
+      missing.push({
+        id: q.id,
+        titulo: q.titulo[currentLang]
+      });
+      if (block) block.classList.add('has-error');
+    } else {
+      if (block) block.classList.remove('has-error');
+    }
+  });
+
+  const alertBox = document.getElementById('validation-alert');
+  const missingList = document.getElementById('missing-fields-list');
+
+  if (missing.length > 0) {
+    alertBox.style.display = 'flex';
+    missingList.innerHTML = '';
+
+    missing.forEach(m => {
+      const li = document.createElement('li');
+      li.innerText = m.titulo;
+      li.title = currentLang === 'es' ? 'Haz clic para ir a esta pregunta' : 'Click to jump to this question';
+      li.onclick = () => {
+        const targetBlock = document.getElementById(`block_${m.id}`);
+        if (targetBlock) {
+          targetBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      };
+      missingList.appendChild(li);
+    });
+
+    // Desplazar la vista suavemente a la primera pregunta faltante
+    const firstMissingBlock = document.getElementById(`block_${missing[0].id}`);
+    if (firstMissingBlock) {
+      firstMissingBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    return false;
+  }
+
+  alertBox.style.display = 'none';
+  return true;
 }
 
 // ==========================================
@@ -332,9 +427,10 @@ function handleFileSelect(event, questionId) {
 }
 
 function processFile(file, questionId) {
-  // Validar tamaño máximo (10MB)
   if (file.size > 10 * 1024 * 1024) {
-    alert("El archivo excede el tamaño máximo permitido de 10MB");
+    alert(currentLang === 'es' 
+      ? "El comprobante excede el tamaño máximo de 10MB" 
+      : "The receipt exceeds the 10MB limit");
     return;
   }
 
@@ -350,11 +446,11 @@ function processFile(file, questionId) {
       size: (file.size / 1024).toFixed(1) + ' KB'
     };
 
-    // Actualizar input oculto para que pase la validación required
+    clearError(questionId);
+
     const hiddenInput = document.getElementById(`input_${questionId}`);
     if (hiddenInput) hiddenInput.value = file.name;
 
-    // Mostrar vista previa
     document.getElementById(`dropzone_${questionId}`).style.display = 'none';
     const preview = document.getElementById(`preview_${questionId}`);
     const thumb = document.getElementById(`thumb_${questionId}`);
@@ -363,7 +459,6 @@ function processFile(file, questionId) {
       thumb.src = dataUrl;
       thumb.style.display = 'block';
     } else {
-      // Icono genérico si es PDF
       thumb.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="%233b82f6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
     }
 
@@ -393,9 +488,8 @@ function removeFile(questionId) {
 async function handleFormSubmit(event) {
   event.preventDefault();
 
-  const form = document.getElementById('dynamic-form');
-  if (!form.checkValidity()) {
-    form.reportValidity();
+  // 1. Ejecutar validación inteligente
+  if (!validateForm()) {
     return;
   }
 
@@ -407,6 +501,7 @@ async function handleFormSubmit(event) {
   btnSpinner.style.display = 'inline-block';
   btnText.innerText = I18N[currentLang].submittingBtn;
 
+  // 2. Recopilar respuestas
   const respuestas = [];
   FORM_CONFIG.preguntas.forEach(q => {
     if (q.tipo === 'section') return;
@@ -449,24 +544,22 @@ async function handleFormSubmit(event) {
   };
 
   try {
-    if (FORM_CONFIG.webhookUrl === "TU_URL_DE_WEBHOOK_AQUI" || !FORM_CONFIG.webhookUrl.startsWith("http")) {
-      console.warn("⚠️ Webhook de prueba (sin URL de Google configurada aún). Payload:", payload);
-      await new Promise(r => setTimeout(r, 1200));
-    } else {
-      await fetch(FORM_CONFIG.webhookUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    }
+    // Envío con fetch a Google Apps Script Webhook
+    await fetch(FORM_CONFIG.webhookUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
 
+    // Éxito: Ocultar formulario y mostrar pantalla de agradecimiento con Gil Reverand
     document.getElementById('dynamic-form').style.display = 'none';
     document.getElementById('success-card').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 
   } catch (error) {
     console.error("Error al enviar formulario:", error);
-    alert("Error al enviar la respuesta: " + error.message);
+    alert(currentLang === 'es' ? "Error al enviar: " + error.message : "Submission error: " + error.message);
   } finally {
     submitBtn.disabled = false;
     btnSpinner.style.display = 'none';
@@ -477,6 +570,9 @@ async function handleFormSubmit(event) {
 function resetForm() {
   document.getElementById('dynamic-form').reset();
   Object.keys(uploadedFiles).forEach(k => removeFile(k));
+  document.querySelectorAll('.question-block.has-error').forEach(b => b.classList.remove('has-error'));
+  document.getElementById('validation-alert').style.display = 'none';
   document.getElementById('dynamic-form').style.display = 'block';
   document.getElementById('success-card').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Formulario Bilingüe / Bilingual Form</title>
-  <meta name="description" content="Formulario moderno bilingüe conectado a Google Sheets">
+  <title>Evaluación Integral | Amazona Fitness</title>
+  <meta name="description" content="Formulario bilingüe de evaluación y registro - Amazona Fitness Gil Reverand">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -20,13 +20,13 @@
     <header class="top-controls">
       <div class="brand-badge">
         <span class="pulse-dot"></span>
-        <span id="brand-status" class="brand-text">Formulario Activo</span>
+        <span id="brand-status" class="brand-text">Amazona Fitness</span>
       </div>
 
       <div class="controls-group">
         <!-- Switch de Tema (Light / Dark) -->
         <button id="theme-toggle" class="control-btn" type="button" aria-label="Cambiar tema" title="Cambiar tema claro/oscuro">
-          <!-- Icono Sol (para cuando está en oscuro) -->
+          <!-- Icono Sol (modo oscuro activo) -->
           <svg id="icon-sun" class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -38,7 +38,7 @@
             <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
           </svg>
-          <!-- Icono Luna (para cuando está en claro) -->
+          <!-- Icono Luna (modo claro activo) -->
           <svg id="icon-moon" class="theme-icon" style="display:none;" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
           </svg>
@@ -71,6 +71,21 @@
           <!-- Preguntas generadas dinámicamente -->
         </div>
 
+        <!-- Banner de Alerta de Campos Faltantes -->
+        <div id="validation-alert" class="validation-alert" style="display: none;">
+          <div class="alert-icon-wrapper">
+            <svg class="alert-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="12"></line>
+              <line x1="12" y1="16" x2="12.01" y2="16"></line>
+            </svg>
+          </div>
+          <div class="alert-content">
+            <div id="alert-title" class="alert-title">Por favor completa los siguientes campos obligatorios:</div>
+            <ul id="missing-fields-list" class="missing-list"></ul>
+          </div>
+        </div>
+
         <div class="form-actions">
           <button type="submit" id="submit-btn" class="primary-btn">
             <span class="btn-spinner" id="btn-spinner" style="display: none;"></span>
@@ -82,7 +97,7 @@
         </div>
       </form>
 
-      <!-- Tarjeta de Confirmación de Envío -->
+      <!-- Tarjeta de Confirmación de Envío con Gil Reverand Amazona Fitness -->
       <div id="success-card" class="card success-card" style="display: none;">
         <div class="success-icon-wrapper">
           <svg class="checkmark" viewBox="0 0 52 52">
@@ -90,16 +105,51 @@
             <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
           </svg>
         </div>
-        <h2 id="success-title" class="success-heading">¡Respuesta registrada con éxito!</h2>
-        <p id="success-message" class="success-body">Tus datos han sido enviados y sincronizados directamente con Google Sheets.</p>
-        <button type="button" class="secondary-btn" onclick="resetForm()">
-          <span id="btn-new-response">Enviar otra respuesta</span>
-        </button>
+        
+        <h2 id="success-title" class="success-heading">¡Gracias por completar tu evaluación!</h2>
+        <p id="success-message" class="success-body">Tus respuestas y comprobante han sido recibidos con éxito. Estaremos en contacto muy pronto para entregarte tu plan personalizado.</p>
+        
+        <!-- Tarjeta de Contacto Oficial de Gil Reverand -->
+        <div class="coach-contact-card">
+          <div class="coach-header">
+            <div class="coach-avatar">GR</div>
+            <div class="coach-info">
+              <h3 class="coach-name">Gil Reverand</h3>
+              <p class="coach-subtitle">Amazona Fitness</p>
+            </div>
+          </div>
+
+          <p id="coach-reach-text" class="coach-reach-text">Ponte en contacto directo o síguenos para comenzar:</p>
+
+          <div class="contact-buttons-grid">
+            <a href="https://instagram.com/gilreverand8" target="_blank" rel="noopener noreferrer" class="contact-button insta-btn">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+              <span>@gilreverand8</span>
+            </a>
+
+            <a href="https://wa.me/584123012357?text=Hola%20Gil,%20acabo%20de%20enviar%20mi%20formulario%20de%20Amazona%20Fitness" target="_blank" rel="noopener noreferrer" class="contact-button wa-btn">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+              </svg>
+              <span>+58 412-3012357</span>
+            </a>
+          </div>
+        </div>
+
+        <div style="margin-top: 32px;">
+          <button type="button" class="secondary-btn" onclick="resetForm()">
+            <span id="btn-new-response">Enviar otra respuesta</span>
+          </button>
+        </div>
       </div>
     </main>
 
     <footer class="app-footer">
-      <p id="footer-text">Conexión directa segura con Google Workspace</p>
+      <p id="footer-text">Amazona Fitness • Gil Reverand • Conexión directa con Google Sheets</p>
     </footer>
   </div>
 

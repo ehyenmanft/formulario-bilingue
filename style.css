@@ -452,7 +452,14 @@ textarea {
   user-select: none;
 }
 
-.pill-card input { display: none; }
+.pill-card input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+}
 .pill-card:hover {
   border-color: var(--border-focus);
   color: var(--text-primary);
@@ -494,7 +501,14 @@ textarea {
   transition: var(--transition-smooth);
 }
 
-.scale-button input { display: none; }
+.scale-button input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+}
 .scale-button:hover {
   border-color: var(--border-focus);
   color: var(--text-primary);
@@ -688,4 +702,186 @@ textarea {
   color: var(--text-secondary);
   line-height: 1.5;
   white-space: pre-line;
+}
+
+/* ==========================================================================
+   ESTILOS DE ERROR Y VALIDACIÓN INTELIGENTE
+   ========================================================================== */
+
+.question-block.has-error {
+  border-color: var(--danger) !important;
+  background: rgba(239, 68, 68, 0.08) !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.25) !important;
+  animation: shake 0.4s ease-in-out;
+}
+
+.question-block.has-error .question-title {
+  color: var(--danger);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.validation-alert {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+  margin-top: 24px;
+  margin-bottom: 8px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.alert-icon-wrapper {
+  color: var(--danger);
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+
+.alert-icon {
+  width: 24px;
+  height: 24px;
+}
+
+.alert-content {
+  flex: 1;
+}
+
+.alert-title {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: var(--danger);
+  margin-bottom: 8px;
+}
+
+.missing-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.missing-list li {
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.missing-list li:hover {
+  color: var(--danger);
+  text-decoration: underline;
+}
+
+/* ==========================================================================
+   TARJETA DE CONTACTO OFICIAL GIL REVERAND - AMAZONA FITNESS
+   ========================================================================== */
+
+.coach-contact-card {
+  background: var(--bg-surface-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin: 28px auto 0 auto;
+  max-width: 500px;
+  text-align: left;
+  box-shadow: var(--shadow-card);
+}
+
+.coach-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.coach-avatar {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ec4899 0%, var(--primary) 100%);
+  color: white;
+  font-weight: 800;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(236, 72, 153, 0.4);
+}
+
+.coach-name {
+  font-size: 19px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+.coach-subtitle {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ec4899;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.coach-reach-text {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  margin-bottom: 16px;
+  line-height: 1.4;
+}
+
+.contact-buttons-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.contact-button {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: var(--transition-smooth);
+}
+
+.insta-btn {
+  background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(220, 39, 67, 0.35);
+}
+
+.insta-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(220, 39, 67, 0.45);
+}
+
+.wa-btn {
+  background: #25d366;
+  color: white;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.35);
+}
+
+.wa-btn:hover {
+  transform: translateY(-2px);
+  background: #20ba5a;
+  box-shadow: 0 8px 18px rgba(37, 211, 102, 0.45);
 }
