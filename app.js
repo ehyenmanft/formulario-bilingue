@@ -1,10 +1,13 @@
 /**
  * CONTROLADOR PRINCIPAL DE LA APLICACIÓN WEB - AMAZONA FITNESS
+ * Formulario Multipaso (Tarjetas de Secciones)
  */
 
 let currentLang = 'es';
 let currentTheme = 'dark';
-const uploadedFiles = {}; // Guarda { [questionId]: { nombre, tipoMime, base64, size } }
+let currentStepIndex = 0;
+let formSteps = []; // Lista de { id, titulo, ayuda, preguntas: [...] }
+const uploadedFiles = {}; // { [questionId]: { nombre, tipoMime, base64, size } }
 
 const I18N = {
   es: {
@@ -16,8 +19,14 @@ const I18N = {
     successBody: "Tus respuestas y comprobante han sido recibidos con éxito. Estaremos en contacto muy pronto para entregarte tu plan personalizado.",
     coachReachText: "Ponte en contacto directo o síguenos para comenzar:",
     btnNewResponse: "Enviar otra respuesta",
+    btnPrev: "Anterior",
+    btnNext: "Siguiente sección",
+    stepPrefix: "Sección",
+    of: "de",
+    firstSectionTitle: "Datos Básicos y Biometría",
+    firstSectionDesc: "Por favor proporciona tus datos de contacto y medidas para comenzar.",
     selectDefault: "-- Selecciona una opción --",
-    alertTitle: "Por favor completa los siguientes campos obligatorios:",
+    alertTitle: "Por favor completa los siguientes campos obligatorios de esta sección:",
     dropzoneTitle: "Haz clic o arrastra tu comprobante aquí",
     dropzoneHint: "Formatos permitidos: JPG, PNG, WEBP o PDF (máx. 10MB)",
     fileSelected: "Comprobante cargado",
@@ -32,8 +41,14 @@ const I18N = {
     successBody: "Your responses and receipt have been successfully received. We will be in touch shortly to deliver your personalized plan.",
     coachReachText: "Get in direct touch or follow us to get started:",
     btnNewResponse: "Submit another response",
+    btnPrev: "Back",
+    btnNext: "Next section",
+    stepPrefix: "Section",
+    of: "of",
+    firstSectionTitle: "Basic Information & Biometrics",
+    firstSectionDesc: "Please provide your contact information and measurements to get started.",
     selectDefault: "-- Select an option --",
-    alertTitle: "Please complete the following required fields:",
+    alertTitle: "Please complete the following required fields in this section:",
     dropzoneTitle: "Click or drag your receipt here",
     dropzoneHint: "Allowed formats: JPG, PNG, WEBP or PDF (max 10MB)",
     fileSelected: "Receipt loaded",
@@ -43,6 +58,7 @@ const I18N = {
 
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
+  buildStepsStructure();
   initForm();
 });
 
@@ -91,6 +107,8 @@ function setLanguage(lang) {
   document.getElementById('brand-status').innerText = I18N[lang].brandStatus;
   document.getElementById('text-required-legend').innerText = I18N[lang].requiredLegend;
   document.getElementById('btn-text').innerText = I18N[lang].submitBtn;
+  document.getElementById('btn-prev-text').innerText = I18N[lang].btnPrev;
+  document.getElementById('btn-next-text').innerText = I18N[lang].btnNext;
   
   const successTitle = document.getElementById('success-title');
   if (successTitle) successTitle.innerText = I18N[lang].successHeading;
@@ -110,225 +128,314 @@ function setLanguage(lang) {
   document.getElementById('form-main-title').innerText = FORM_CONFIG.titulo[lang];
   document.getElementById('form-main-desc').innerText = FORM_CONFIG.descripcion[lang];
 
+  updateProgressIndicator();
   updateQuestionTexts();
 }
 
 // ==========================================
-// RENDERIZADO DEL FORMULARIO
+// AGRUPAR PREGUNTAS EN SECCIONES (PÁGINAS)
+// ==========================================
+function buildStepsStructure() {
+  formSteps = [];
+  let currentStep = {
+    index: 0,
+    titulo: { es: I18N.es.firstSectionTitle, en: I18N.en.firstSectionTitle },
+    ayuda: { es: I18N.es.firstSectionDesc, en: I18N.en.firstSectionDesc },
+    preguntas: []
+  };
+
+  FORM_CONFIG.preguntas.forEach(q => {
+    if (q.tipo === 'section') {
+      if (currentStep.preguntas.length > 0) {
+        formSteps.push(currentStep);
+      }
+      currentStep = {
+        index: formSteps.length,
+        titulo: q.titulo,
+        ayuda: q.ayuda || { es: '', en: '' },
+        preguntas: []
+      };
+    } else {
+      currentStep.preguntas.push(q);
+    }
+  });
+
+  if (currentStep.preguntas.length > 0) {
+    formSteps.push(currentStep);
+  }
+}
+
+// ==========================================
+// RENDERIZADO DEL FORMULARIO EN TARJETAS DE PÁGINAS
 // ==========================================
 function initForm() {
   document.getElementById('form-main-title').innerText = FORM_CONFIG.titulo[currentLang];
   document.getElementById('form-main-desc').innerText = FORM_CONFIG.descripcion[currentLang];
 
-  const grid = document.getElementById('questions-grid');
-  grid.innerHTML = '';
+  const stepsContainer = document.getElementById('steps-container');
+  stepsContainer.innerHTML = '';
 
-  FORM_CONFIG.preguntas.forEach(q => {
-    // Encabezados de Sección
-    if (q.tipo === 'section') {
-      const sectionBlock = document.createElement('div');
-      sectionBlock.className = 'section-header-block col-12';
-      sectionBlock.id = `block_${q.id}`;
-      sectionBlock.innerHTML = `
+  formSteps.forEach((step, sIdx) => {
+    const page = document.createElement('div');
+    page.className = 'form-step-page';
+    page.id = `step_page_${sIdx}`;
+    page.style.display = (sIdx === currentStepIndex) ? 'block' : 'none';
+
+    // Encabezado de la tarjeta de sección
+    const headerHtml = `
+      <div class="section-header-block" id="header_step_${sIdx}">
         <div class="section-header-content">
           <div class="section-pill">
             <span class="pulse-dot"></span>
-            <span class="section-label">SECCIÓN</span>
+            <span class="step-badge-text">${I18N[currentLang].stepPrefix} ${sIdx + 1} ${I18N[currentLang].of} ${formSteps.length}</span>
           </div>
-          <h2 class="section-title title-text">${q.titulo[currentLang]}</h2>
-          ${q.ayuda ? `<p class="section-help question-help">${q.ayuda[currentLang]}</p>` : ''}
+          <h2 class="section-title step-title-text">${step.titulo[currentLang]}</h2>
+          ${step.ayuda && step.ayuda[currentLang] ? `<p class="section-help step-help-text">${step.ayuda[currentLang]}</p>` : ''}
         </div>
-      `;
-      grid.appendChild(sectionBlock);
-      return;
-    }
-
-    const block = document.createElement('div');
-    block.className = `question-block col-${q.colSpan || 12}`;
-    block.id = `block_${q.id}`;
-
-    let inputHtml = '';
-
-    if (q.tipo === 'file') {
-      inputHtml = `
-        <div class="file-component-wrapper" id="wrapper_${q.id}">
-          <div class="file-dropzone" id="dropzone_${q.id}" onclick="document.getElementById('file_input_${q.id}').click()">
-            <input type="file" id="file_input_${q.id}" style="display:none;" accept="image/png, image/jpeg, image/webp, application/pdf" onchange="handleFileSelect(event, '${q.id}')" />
-            <div class="dropzone-content">
-              <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              <div class="dropzone-title" id="drop_title_${q.id}">${I18N[currentLang].dropzoneTitle}</div>
-              <div class="dropzone-hint" id="drop_hint_${q.id}">${I18N[currentLang].dropzoneHint}</div>
-            </div>
-          </div>
-          <div class="file-preview" id="preview_${q.id}" style="display:none;">
-            <img class="preview-thumb" id="thumb_${q.id}" src="" alt="Comprobante" />
-            <div class="file-info">
-              <div class="file-name" id="fname_${q.id}"></div>
-              <div class="file-size" id="fsize_${q.id}"></div>
-            </div>
-            <button type="button" class="btn-remove-file" onclick="removeFile('${q.id}')" title="Eliminar archivo">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
-          </div>
-          <input type="hidden" id="input_${q.id}" name="${q.id}" />
-        </div>
-      `;
-    }
-    else if (q.tipo === 'text') {
-      inputHtml = `<input type="${q.inputType || 'text'}" id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" oninput="clearError('${q.id}')" />`;
-    } 
-    else if (q.tipo === 'textarea') {
-      inputHtml = `<textarea id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" oninput="clearError('${q.id}')"></textarea>`;
-    } 
-    else if (q.tipo === 'select') {
-      inputHtml = `
-        <select id="input_${q.id}" name="${q.id}" onchange="clearError('${q.id}')">
-          <option value="">${I18N[currentLang].selectDefault}</option>
-          ${q.opciones[currentLang].map((opt, i) => `<option value="${q.opciones['es'][i]}">${opt}</option>`).join('')}
-        </select>
-      `;
-    } 
-    else if (q.tipo === 'pills-radio') {
-      inputHtml = `
-        <div class="pills-grid">
-          ${q.opciones[currentLang].map((opt, i) => `
-            <label class="pill-card">
-              <input type="radio" name="${q.id}" value="${q.opciones['es'][i]}" onchange="clearError('${q.id}')" />
-              <span class="opt-label" data-index="${i}">${opt}</span>
-            </label>
-          `).join('')}
-        </div>
-      `;
-    } 
-    else if (q.tipo === 'pills-checkbox') {
-      inputHtml = `
-        <div class="pills-grid">
-          ${q.opciones[currentLang].map((opt, i) => `
-            <label class="pill-card">
-              <input type="checkbox" name="${q.id}" value="${q.opciones['es'][i]}" onchange="clearError('${q.id}')" />
-              <span class="opt-label" data-index="${i}">${opt}</span>
-            </label>
-          `).join('')}
-        </div>
-      `;
-    } 
-    else if (q.tipo === 'scale') {
-      const bounds = q.scaleBounds;
-      let buttons = '';
-      for (let v = bounds.min; v <= bounds.max; v++) {
-        buttons += `
-          <label class="scale-button">
-            <input type="radio" name="${q.id}" value="${v}" onchange="clearError('${q.id}')" />
-            <span>${v}</span>
-          </label>
-        `;
-      }
-      inputHtml = `
-        <div class="scale-group">
-          <div class="scale-buttons">${buttons}</div>
-          <div class="scale-labels">
-            <span class="scale-label-left">${bounds.leftLabel[currentLang] || ''}</span>
-            <span class="scale-label-right">${bounds.rightLabel[currentLang] || ''}</span>
-          </div>
-        </div>
-      `;
-    }
-
-    block.innerHTML = `
-      <div class="question-header">
-        <label class="question-title" for="input_${q.id}">
-          <span class="title-text">${q.titulo[currentLang]}</span>
-          ${q.requerido ? '<span class="star">*</span>' : ''}
-        </label>
-        ${q.ayuda ? `<div class="question-help">${q.ayuda[currentLang]}</div>` : ''}
-      </div>
-      <div class="question-control">
-        ${inputHtml}
       </div>
     `;
 
-    grid.appendChild(block);
+    // Contenedor grid de las preguntas de este paso
+    const grid = document.createElement('div');
+    grid.className = 'form-grid';
+    grid.style.marginTop = '20px';
 
-    if (q.tipo === 'file') {
-      setupDropzone(q.id);
-    }
-  });
-}
+    step.preguntas.forEach(q => {
+      const block = document.createElement('div');
+      block.className = `question-block col-${q.colSpan || 12}`;
+      block.id = `block_${q.id}`;
 
-function updateQuestionTexts() {
-  FORM_CONFIG.preguntas.forEach(q => {
-    const block = document.getElementById(`block_${q.id}`);
-    if (!block) return;
+      let inputHtml = '';
 
-    const titleElem = block.querySelector('.title-text');
-    if (titleElem) titleElem.innerText = q.titulo[currentLang];
-
-    const help = block.querySelector('.question-help');
-    if (help && q.ayuda) help.innerText = q.ayuda[currentLang];
-
-    if (q.tipo === 'file') {
-      const dropTitle = document.getElementById(`drop_title_${q.id}`);
-      const dropHint = document.getElementById(`drop_hint_${q.id}`);
-      if (dropTitle) dropTitle.innerText = I18N[currentLang].dropzoneTitle;
-      if (dropHint) dropHint.innerText = I18N[currentLang].dropzoneHint;
-    }
-    else if (q.tipo === 'text' || q.tipo === 'textarea') {
-      const input = block.querySelector('input, textarea');
-      if (input && q.placeholder) input.placeholder = q.placeholder[currentLang] || '';
-    } 
-    else if (q.tipo === 'select') {
-      const select = block.querySelector('select');
-      if (select && select.options.length > 0) {
-        select.options[0].text = I18N[currentLang].selectDefault;
-        q.opciones[currentLang].forEach((opt, idx) => {
-          if (select.options[idx + 1]) select.options[idx + 1].text = opt;
-        });
+      if (q.tipo === 'file') {
+        inputHtml = `
+          <div class="file-component-wrapper" id="wrapper_${q.id}">
+            <div class="file-dropzone" id="dropzone_${q.id}" onclick="document.getElementById('file_input_${q.id}').click()">
+              <input type="file" id="file_input_${q.id}" style="display:none;" accept="image/png, image/jpeg, image/webp, application/pdf" onchange="handleFileSelect(event, '${q.id}')" />
+              <div class="dropzone-content">
+                <svg class="dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <div class="dropzone-title" id="drop_title_${q.id}">${I18N[currentLang].dropzoneTitle}</div>
+                <div class="dropzone-hint" id="drop_hint_${q.id}">${I18N[currentLang].dropzoneHint}</div>
+              </div>
+            </div>
+            <div class="file-preview" id="preview_${q.id}" style="display:none;">
+              <img class="preview-thumb" id="thumb_${q.id}" src="" alt="Comprobante" />
+              <div class="file-info">
+                <div class="file-name" id="fname_${q.id}"></div>
+                <div class="file-size" id="fsize_${q.id}"></div>
+              </div>
+              <button type="button" class="btn-remove-file" onclick="removeFile('${q.id}')" title="Eliminar archivo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+            <input type="hidden" id="input_${q.id}" name="${q.id}" />
+          </div>
+        `;
       }
-    } 
-    else if (q.tipo === 'pills-radio' || q.tipo === 'pills-checkbox') {
-      const labels = block.querySelectorAll('.opt-label');
-      labels.forEach(label => {
-        const idx = parseInt(label.getAttribute('data-index'), 10);
-        if (q.opciones[currentLang][idx]) {
-          label.innerText = q.opciones[currentLang][idx];
+      else if (q.tipo === 'text') {
+        inputHtml = `<input type="${q.inputType || 'text'}" id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" oninput="clearError('${q.id}')" />`;
+      } 
+      else if (q.tipo === 'textarea') {
+        inputHtml = `<textarea id="input_${q.id}" name="${q.id}" placeholder="${q.placeholder ? q.placeholder[currentLang] || '' : ''}" oninput="clearError('${q.id}')"></textarea>`;
+      } 
+      else if (q.tipo === 'select') {
+        inputHtml = `
+          <select id="input_${q.id}" name="${q.id}" onchange="clearError('${q.id}')">
+            <option value="">${I18N[currentLang].selectDefault}</option>
+            ${q.opciones[currentLang].map((opt, i) => `<option value="${q.opciones['es'][i]}">${opt}</option>`).join('')}
+          </select>
+        `;
+      } 
+      else if (q.tipo === 'pills-radio') {
+        inputHtml = `
+          <div class="pills-grid">
+            ${q.opciones[currentLang].map((opt, i) => `
+              <label class="pill-card">
+                <input type="radio" name="${q.id}" value="${q.opciones['es'][i]}" onchange="clearError('${q.id}')" />
+                <span class="opt-label" data-index="${i}">${opt}</span>
+              </label>
+            `).join('')}
+          </div>
+        `;
+      } 
+      else if (q.tipo === 'pills-checkbox') {
+        inputHtml = `
+          <div class="pills-grid">
+            ${q.opciones[currentLang].map((opt, i) => `
+              <label class="pill-card">
+                <input type="checkbox" name="${q.id}" value="${q.opciones['es'][i]}" onchange="clearError('${q.id}')" />
+                <span class="opt-label" data-index="${i}">${opt}</span>
+              </label>
+            `).join('')}
+          </div>
+        `;
+      } 
+      else if (q.tipo === 'scale') {
+        const bounds = q.scaleBounds;
+        let buttons = '';
+        for (let v = bounds.min; v <= bounds.max; v++) {
+          buttons += `
+            <label class="scale-button">
+              <input type="radio" name="${q.id}" value="${v}" onchange="clearError('${q.id}')" />
+              <span>${v}</span>
+            </label>
+          `;
         }
-      });
-    } 
-    else if (q.tipo === 'scale') {
-      const left = block.querySelector('.scale-label-left');
-      const right = block.querySelector('.scale-label-right');
-      if (left) left.innerText = q.scaleBounds.leftLabel[currentLang] || '';
-      if (right) right.innerText = q.scaleBounds.rightLabel[currentLang] || '';
-    }
+        inputHtml = `
+          <div class="scale-group">
+            <div class="scale-buttons">${buttons}</div>
+            <div class="scale-labels">
+              <span class="scale-label-left">${bounds.leftLabel[currentLang] || ''}</span>
+              <span class="scale-label-right">${bounds.rightLabel[currentLang] || ''}</span>
+            </div>
+          </div>
+        `;
+      }
+
+      block.innerHTML = `
+        <div class="question-header">
+          <label class="question-title" for="input_${q.id}">
+            <span class="title-text">${q.titulo[currentLang]}</span>
+            ${q.requerido ? '<span class="star">*</span>' : ''}
+          </label>
+          ${q.ayuda ? `<div class="question-help">${q.ayuda[currentLang]}</div>` : ''}
+        </div>
+        <div class="question-control">
+          ${inputHtml}
+        </div>
+      `;
+
+      grid.appendChild(block);
+
+      if (q.tipo === 'file') {
+        setupDropzone(q.id);
+      }
+    });
+
+    page.innerHTML = headerHtml;
+    page.appendChild(grid);
+    stepsContainer.appendChild(page);
   });
+
+  updateProgressIndicator();
+  updateNavigationButtons();
 }
 
 // ==========================================
-// VALIDACIÓN INTELIGENTE DE CAMPOS
+// CONTROL DE PASOS (WIZARD NAVIGATION)
+// ==========================================
+function updateProgressIndicator() {
+  if (formSteps.length === 0) return;
+  const currentStep = formSteps[currentStepIndex];
+  const stepNumber = currentStepIndex + 1;
+  const total = formSteps.length;
+  const pct = Math.round((stepNumber / total) * 100);
+
+  document.getElementById('wizard-step-label').innerText = `${I18N[currentLang].stepPrefix} ${stepNumber} ${I18N[currentLang].of} ${total}`;
+  document.getElementById('wizard-step-title').innerText = currentStep.titulo[currentLang];
+  document.getElementById('wizard-step-percentage').innerText = `${pct}%`;
+  document.getElementById('wizard-progress-fill').style.width = `${pct}%`;
+}
+
+function updateNavigationButtons() {
+  const btnPrev = document.getElementById('btn-prev-step');
+  const btnNext = document.getElementById('btn-next-step');
+  const btnSubmit = document.getElementById('submit-btn');
+
+  // Botón Anterior
+  if (currentStepIndex === 0) {
+    btnPrev.style.display = 'none';
+  } else {
+    btnPrev.style.display = 'inline-flex';
+    document.getElementById('btn-prev-text').innerText = I18N[currentLang].btnPrev;
+  }
+
+  // Botón Siguiente vs Enviar
+  if (currentStepIndex === formSteps.length - 1) {
+    btnNext.style.display = 'none';
+    btnSubmit.style.display = 'inline-flex';
+    document.getElementById('btn-text').innerText = I18N[currentLang].submitBtn;
+  } else {
+    btnNext.style.display = 'inline-flex';
+    btnSubmit.style.display = 'none';
+    document.getElementById('btn-next-text').innerText = I18N[currentLang].btnNext;
+  }
+}
+
+function nextStep() {
+  // Validar solo los campos obligatorios del paso actual
+  if (!validateStep(currentStepIndex)) {
+    return;
+  }
+
+  // Ocultar alerta de validación
+  document.getElementById('validation-alert').style.display = 'none';
+
+  if (currentStepIndex < formSteps.length - 1) {
+    document.getElementById(`step_page_${currentStepIndex}`).style.display = 'none';
+    currentStepIndex++;
+    const nextPage = document.getElementById(`step_page_${currentStepIndex}`);
+    nextPage.style.display = 'block';
+
+    updateProgressIndicator();
+    updateNavigationButtons();
+    scrollToTop();
+  }
+}
+
+function prevStep() {
+  document.getElementById('validation-alert').style.display = 'none';
+
+  if (currentStepIndex > 0) {
+    document.getElementById(`step_page_${currentStepIndex}`).style.display = 'none';
+    currentStepIndex--;
+    const prevPage = document.getElementById(`step_page_${currentStepIndex}`);
+    prevPage.style.display = 'block';
+
+    updateProgressIndicator();
+    updateNavigationButtons();
+    scrollToTop();
+  }
+}
+
+function scrollToTop() {
+  const headerCard = document.querySelector('.header-card');
+  if (headerCard) {
+    headerCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } else {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+// ==========================================
+// VALIDACIÓN INTELIGENTE POR SECCIÓN
 // ==========================================
 function clearError(questionId) {
   const block = document.getElementById(`block_${questionId}`);
   if (block) block.classList.remove('has-error');
 
-  // Si ya no quedan errores, ocultar banner
-  if (document.querySelectorAll('.question-block.has-error').length === 0) {
+  const stepPage = document.getElementById(`step_page_${currentStepIndex}`);
+  if (stepPage && stepPage.querySelectorAll('.question-block.has-error').length === 0) {
     const alertBox = document.getElementById('validation-alert');
     if (alertBox) alertBox.style.display = 'none';
   }
 }
 
-function validateForm() {
+function validateStep(stepIdx) {
+  const step = formSteps[stepIdx];
+  if (!step) return true;
+
   const missing = [];
 
-  FORM_CONFIG.preguntas.forEach(q => {
-    if (q.tipo === 'section' || !q.requerido) return;
+  step.preguntas.forEach(q => {
+    if (!q.requerido) return;
 
     let isFilled = false;
 
@@ -375,7 +482,6 @@ function validateForm() {
       missingList.appendChild(li);
     });
 
-    // Desplazar la vista suavemente a la primera pregunta faltante
     const firstMissingBlock = document.getElementById(`block_${missing[0].id}`);
     if (firstMissingBlock) {
       firstMissingBlock.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -386,6 +492,71 @@ function validateForm() {
 
   alertBox.style.display = 'none';
   return true;
+}
+
+// ==========================================
+// ACTUALIZACIÓN DE TEXTOS EN CAMBIO DE IDIOMA
+// ==========================================
+function updateQuestionTexts() {
+  formSteps.forEach((step, sIdx) => {
+    const stepHeader = document.getElementById(`header_step_${sIdx}`);
+    if (stepHeader) {
+      const badge = stepHeader.querySelector('.step-badge-text');
+      if (badge) badge.innerText = `${I18N[currentLang].stepPrefix} ${sIdx + 1} ${I18N[currentLang].of} ${formSteps.length}`;
+
+      const title = stepHeader.querySelector('.step-title-text');
+      if (title) title.innerText = step.titulo[currentLang];
+
+      const help = stepHeader.querySelector('.step-help-text');
+      if (help && step.ayuda) help.innerText = step.ayuda[currentLang] || '';
+    }
+
+    step.preguntas.forEach(q => {
+      const block = document.getElementById(`block_${q.id}`);
+      if (!block) return;
+
+      const titleElem = block.querySelector('.title-text');
+      if (titleElem) titleElem.innerText = q.titulo[currentLang];
+
+      const help = block.querySelector('.question-help');
+      if (help && q.ayuda) help.innerText = q.ayuda[currentLang];
+
+      if (q.tipo === 'file') {
+        const dropTitle = document.getElementById(`drop_title_${q.id}`);
+        const dropHint = document.getElementById(`drop_hint_${q.id}`);
+        if (dropTitle) dropTitle.innerText = I18N[currentLang].dropzoneTitle;
+        if (dropHint) dropHint.innerText = I18N[currentLang].dropzoneHint;
+      }
+      else if (q.tipo === 'text' || q.tipo === 'textarea') {
+        const input = block.querySelector('input, textarea');
+        if (input && q.placeholder) input.placeholder = q.placeholder[currentLang] || '';
+      } 
+      else if (q.tipo === 'select') {
+        const select = block.querySelector('select');
+        if (select && select.options.length > 0) {
+          select.options[0].text = I18N[currentLang].selectDefault;
+          q.opciones[currentLang].forEach((opt, idx) => {
+            if (select.options[idx + 1]) select.options[idx + 1].text = opt;
+          });
+        }
+      } 
+      else if (q.tipo === 'pills-radio' || q.tipo === 'pills-checkbox') {
+        const labels = block.querySelectorAll('.opt-label');
+        labels.forEach(label => {
+          const idx = parseInt(label.getAttribute('data-index'), 10);
+          if (q.opciones[currentLang][idx]) {
+            label.innerText = q.opciones[currentLang][idx];
+          }
+        });
+      } 
+      else if (q.tipo === 'scale') {
+        const left = block.querySelector('.scale-label-left');
+        const right = block.querySelector('.scale-label-right');
+        if (left) left.innerText = q.scaleBounds.leftLabel[currentLang] || '';
+        if (right) right.innerText = q.scaleBounds.rightLabel[currentLang] || '';
+      }
+    });
+  });
 }
 
 // ==========================================
@@ -483,13 +654,13 @@ function removeFile(questionId) {
 }
 
 // ==========================================
-// ENVÍO DE DATOS A GOOGLE SHEETS & DRIVE
+// ENVÍO FINAL A GOOGLE SHEETS & DRIVE
 // ==========================================
 async function handleFormSubmit(event) {
   event.preventDefault();
 
-  // 1. Ejecutar validación inteligente
-  if (!validateForm()) {
+  // Validar última sección antes de enviar
+  if (!validateStep(currentStepIndex)) {
     return;
   }
 
@@ -501,7 +672,6 @@ async function handleFormSubmit(event) {
   btnSpinner.style.display = 'inline-block';
   btnText.innerText = I18N[currentLang].submittingBtn;
 
-  // 2. Recopilar respuestas
   const respuestas = [];
   FORM_CONFIG.preguntas.forEach(q => {
     if (q.tipo === 'section') return;
@@ -544,7 +714,6 @@ async function handleFormSubmit(event) {
   };
 
   try {
-    // Envío con fetch a Google Apps Script Webhook
     await fetch(FORM_CONFIG.webhookUrl, {
       method: 'POST',
       mode: 'no-cors',
@@ -552,7 +721,6 @@ async function handleFormSubmit(event) {
       body: JSON.stringify(payload)
     });
 
-    // Éxito: Ocultar formulario y mostrar pantalla de agradecimiento con Gil Reverand
     document.getElementById('dynamic-form').style.display = 'none';
     document.getElementById('success-card').style.display = 'block';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -572,6 +740,15 @@ function resetForm() {
   Object.keys(uploadedFiles).forEach(k => removeFile(k));
   document.querySelectorAll('.question-block.has-error').forEach(b => b.classList.remove('has-error'));
   document.getElementById('validation-alert').style.display = 'none';
+
+  // Regresar al primer paso
+  document.querySelectorAll('.form-step-page').forEach((p, idx) => {
+    p.style.display = (idx === 0) ? 'block' : 'none';
+  });
+  currentStepIndex = 0;
+  updateProgressIndicator();
+  updateNavigationButtons();
+
   document.getElementById('dynamic-form').style.display = 'block';
   document.getElementById('success-card').style.display = 'none';
   window.scrollTo({ top: 0, behavior: 'smooth' });
