@@ -3,7 +3,7 @@
  */
 
 const FORM_CONFIG = {
-  webhookUrl: "TU_URL_DE_WEBHOOK_AQUI", // Pega aquí tu URL de Webhook terminada en /exec
+  webhookUrl: "https://script.google.com/macros/s/AKfycbzP8btx_Ud_ZP6i9ib3eXWXdCzHLdlyRA8aHaf1L_hUMikrmC36quASAQ2BZjLNyegG/exec",
 
   titulo: {
     es: "Formulario de Registro y Comprobante",
