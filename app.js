@@ -89,8 +89,10 @@ function setLanguage(lang) {
   document.getElementById('brand-status').innerText = I18N[lang].brandStatus;
   document.getElementById('text-required-legend').innerText = I18N[lang].requiredLegend;
   document.getElementById('btn-text').innerText = I18N[lang].submitBtn;
-  document.getElementById('success-heading').innerText = I18N[lang].successHeading;
-  document.getElementById('success-message').innerText = I18N[lang].successBody;
+  const successTitle = document.getElementById('success-title');
+  if (successTitle) successTitle.innerText = I18N[lang].successHeading;
+  const successMsg = document.getElementById('success-message');
+  if (successMsg) successMsg.innerText = I18N[lang].successBody;
   document.getElementById('btn-new-response').innerText = I18N[lang].btnNewResponse;
   document.getElementById('footer-text').innerText = I18N[lang].footerText;
 
