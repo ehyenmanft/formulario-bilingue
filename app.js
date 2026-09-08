@@ -690,6 +690,8 @@ async function handleFormSubmit(event) {
         id: q.id,
         tipo: 'file',
         titulo: q.titulo['es'],
+        tituloEs: q.titulo['es'],
+        tituloEn: q.titulo['en'],
         archivo: archivoObj || null,
         valor: archivoObj ? archivoObj.nombre : ''
       });
@@ -710,6 +712,8 @@ async function handleFormSubmit(event) {
         id: q.id,
         tipo: q.tipo,
         titulo: q.titulo['es'],
+        tituloEs: q.titulo['es'],
+        tituloEn: q.titulo['en'],
         valor: valor
       });
     }

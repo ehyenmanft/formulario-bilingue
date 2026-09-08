@@ -1,10 +1,13 @@
 /**
  * CÓDIGO PARA GOOGLE APPS SCRIPT (Vinculado a tu Google Sheet)
  * 
- * Soporta:
- * 1. Carga de comprobantes e imágenes directamente a GOOGLE DRIVE
- * 2. Inserción del enlace de Google Drive en la hoja de respuestas (idéntico a Google Forms)
- * 3. Exportación de preguntas de tu formulario existente
+ * CARACTERÍSTICAS PRINCIPALES:
+ * 1. Mapeo inteligente por encabezados: Coloca cada respuesta en su columna exacta
+ *    según el título de la pregunta en la fila 1 (sin desfases ni columnas corridas).
+ * 2. Guarda el comprobante / recibo en Google Drive ("Comprobantes Formulario Web")
+ *    y coloca su enlace público en la columna "Cargue su comprobante de pago".
+ * 3. Asigna la marca temporal en la columna de Timestamp y el idioma si la columna existe.
+ * 4. No rompe columnas existentes aunque el usuario llene preguntas de forma parcial.
  */
 
 const SPREADSHEET_ID = '11OU8BSOkeMVAOnJze2U2fmBE2VGYIqDFmeMgVS7MUig';
@@ -13,6 +16,19 @@ const FORM_ORIGINAL_ID = '1jbbZ9xNVWdVs_n7eq1Bs19FZfjzt7hFaQo-GLlzjaas';
 
 // Nombre de la carpeta en Google Drive donde se guardarán los comprobantes
 const DRIVE_FOLDER_NAME = 'Comprobantes Formulario Web';
+
+/**
+ * Normaliza cadenas de texto para comparar títulos sin importar mayúsculas,
+ * tildes, signos de puntuación ni espacios.
+ */
+function normalizeStr(str) {
+  if (!str) return '';
+  return str.toString()
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, '')
+    .trim();
+}
 
 /**
  * Webhook POST: Recibe datos y archivos Base64 desde la web
@@ -33,16 +49,7 @@ function doPost(e) {
     }
     if (!sheet) sheet = ss.getSheets()[0];
 
-    // 2. Encabezados si la hoja está vacía
-    if (sheet.getLastRow() === 0) {
-      const headers = ['Marca temporal', 'Idioma'];
-      if (data.respuestas && Array.isArray(data.respuestas)) {
-        data.respuestas.forEach(r => headers.push(r.titulo || r.id));
-      }
-      sheet.appendRow(headers);
-    }
-
-    // 3. Obtener o crear la carpeta en Google Drive
+    // 2. Obtener o crear la carpeta en Google Drive para comprobantes
     let driveFolder = null;
     const folders = DriveApp.getFoldersByName(DRIVE_FOLDER_NAME);
     if (folders.hasNext()) {
@@ -51,12 +58,13 @@ function doPost(e) {
       driveFolder = DriveApp.createFolder(DRIVE_FOLDER_NAME);
     }
 
-    // 4. Procesar respuestas y subir archivos a Google Drive
-    const fila = [new Date(), data.idioma || 'ES'];
-
+    // 3. Procesar archivos y construir mapa de respuestas (por título e ID normalizados)
+    const respuestasMap = {};
     if (data.respuestas && Array.isArray(data.respuestas)) {
       data.respuestas.forEach(r => {
-        // Si es un archivo (comprobante / imagen)
+        let valorFinal = '';
+
+        // Si es un archivo (comprobante / recibo)
         if (r.tipo === 'file' && r.archivo && r.archivo.base64) {
           try {
             const bytes = Utilities.base64Decode(r.archivo.base64);
@@ -66,39 +74,137 @@ function doPost(e) {
             
             // Crear el archivo en Google Drive
             const nuevoArchivoDrive = driveFolder.createFile(blob);
-            
-            // Habilitar acceso de visualización con el enlace
             nuevoArchivoDrive.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
             
-            // Guardar el enlace de Google Drive en la celda (como lo hace Google Forms)
-            fila.push(nuevoArchivoDrive.getUrl());
+            // Enlace de Google Drive para la hoja de cálculo
+            valorFinal = nuevoArchivoDrive.getUrl();
           } catch (errArchivo) {
-            fila.push('Error al subir comprobante: ' + errArchivo.toString());
+            valorFinal = 'Error al subir comprobante: ' + errArchivo.toString();
           }
         } else {
-          // Campo regular de texto, opción, fecha, etc.
-          let val = r.valor;
-          if (Array.isArray(val)) val = val.join(', ');
-          fila.push(val !== undefined && val !== null ? val : '');
+          valorFinal = r.valor;
+          if (Array.isArray(valorFinal)) valorFinal = valorFinal.join(', ');
+          if (valorFinal === undefined || valorFinal === null) valorFinal = '';
         }
+
+        // Registrar en el mapa por título en español, en inglés, título original e ID
+        if (r.titulo) respuestasMap[normalizeStr(r.titulo)] = valorFinal;
+        if (r.tituloEs) respuestasMap[normalizeStr(r.tituloEs)] = valorFinal;
+        if (r.tituloEn) respuestasMap[normalizeStr(r.tituloEn)] = valorFinal;
+        if (r.id) respuestasMap[normalizeStr(r.id)] = valorFinal;
       });
     }
 
-    // Insertar la fila en la hoja de cálculo
-    sheet.appendRow(fila);
+    // 4. Leer encabezados reales de la Fila 1 en la hoja de cálculo
+    const lastCol = sheet.getLastColumn();
+    let headers = [];
+    if (lastCol > 0) {
+      headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    }
 
-    return ContentService.createTextOutput(JSON.stringify({ status: 'success', message: 'Datos y comprobante guardados exitosamente' }))
-      .setMimeType(ContentService.MimeType.JSON);
+    // Si la hoja está totalmente vacía, crear encabezados automáticos
+    if (headers.length === 0 || sheet.getLastRow() === 0) {
+      headers = ['Marca temporal', 'Idioma'];
+      if (data.respuestas && Array.isArray(data.respuestas)) {
+        data.respuestas.forEach(r => headers.push(r.tituloEs || r.titulo || r.id));
+      }
+      sheet.appendRow(headers);
+    }
+
+    // 5. Construir la fila de datos asegurando coincidencia 1 a 1 con los encabezados
+    const fila = new Array(headers.length).fill('');
+
+    for (let c = 0; c < headers.length; c++) {
+      const headerRaw = headers[c];
+      const hNorm = normalizeStr(headerRaw);
+
+      if (!hNorm) continue;
+
+      // Columna de Marca temporal / Timestamp
+      if (hNorm.indexOf('marcatemporal') !== -1 || hNorm.indexOf('timestamp') !== -1) {
+        fila[c] = new Date();
+        continue;
+      }
+
+      // Columna de Idioma (solo si existe explícitamente en la hoja)
+      if (hNorm === 'idioma' || hNorm === 'language') {
+        fila[c] = data.idioma || 'ES';
+        continue;
+      }
+
+      // 1. Coincidencia directa exacta
+      if (respuestasMap.hasOwnProperty(hNorm)) {
+        fila[c] = respuestasMap[hNorm];
+        continue;
+      }
+
+      // 2. Coincidencia parcial si el encabezado o la pregunta tienen ligeras variaciones
+      let encontrado = false;
+      for (const key in respuestasMap) {
+        if (key.length > 5 && (hNorm.indexOf(key) !== -1 || key.indexOf(hNorm) !== -1)) {
+          fila[c] = respuestasMap[key];
+          encontrado = true;
+          break;
+        }
+      }
+    }
+
+    // Respaldo de Marca temporal si no se identificó columna por nombre
+    if (fila[0] === '' && headers[0] && normalizeStr(headers[0]).indexOf('marca') !== -1) {
+      fila[0] = new Date();
+    }
+
+    // 6. Insertar los datos en la fila destino directamente en sus columnas
+    const targetRow = sheet.getLastRow() + 1;
+    sheet.getRange(targetRow, 1, 1, fila.length).setValues([fila]);
+
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: 'success', 
+      message: 'Datos y comprobante guardados exitosamente en sus columnas correspondientes',
+      rowInserted: targetRow
+    })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ status: 'error', message: error.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: 'error', 
+      message: error.toString() 
+    })).setMimeType(ContentService.MimeType.JSON);
   }
 }
 
+/**
+ * Endpoint GET: Monitoreo y diagnóstico de columnas
+ */
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ status: 'online', service: 'Google Sheets & Drive Webhook' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    let sheet = null;
+    const sheets = ss.getSheets();
+    for (let i = 0; i < sheets.length; i++) {
+      if (String(sheets[i].getSheetId()) === TARGET_GID) {
+        sheet = sheets[i];
+        break;
+      }
+    }
+    if (!sheet) sheet = ss.getSheets()[0];
+
+    const lastCol = sheet.getLastColumn();
+    const headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: 'online', 
+      service: 'Google Sheets & Drive Webhook (Header-Mapped)',
+      sheetName: sheet.getName(),
+      totalColumns: lastCol,
+      headers: headers
+    })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ 
+      status: 'online', 
+      service: 'Google Sheets & Drive Webhook',
+      error: err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 /**
