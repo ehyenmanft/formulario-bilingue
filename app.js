@@ -30,6 +30,8 @@ const I18N = {
     dropzoneTitle: "Haz clic o arrastra tu comprobante aquí",
     dropzoneHint: "Formatos permitidos: JPG, PNG, WEBP o PDF (máx. 10MB)",
     fileSelected: "Comprobante cargado",
+    removeFileTitle: "Eliminar comprobante",
+    receiptAttached: "Comprobante adjuntado con éxito",
     footerText: "Amazona Fitness • Gil Reverand • Conexión directa con Google Sheets"
   },
   en: {
@@ -52,6 +54,8 @@ const I18N = {
     dropzoneTitle: "Click or drag your receipt here",
     dropzoneHint: "Allowed formats: JPG, PNG, WEBP or PDF (max 10MB)",
     fileSelected: "Receipt loaded",
+    removeFileTitle: "Remove receipt",
+    receiptAttached: "Receipt attached successfully",
     footerText: "Amazona Fitness • Gil Reverand • Direct Google Sheets Connection"
   }
 };
@@ -223,12 +227,12 @@ function initForm() {
               </div>
             </div>
             <div class="file-preview" id="preview_${q.id}" style="display:none;">
-              <img class="preview-thumb" id="thumb_${q.id}" src="" alt="Comprobante" />
+              <img class="preview-thumb" id="thumb_${q.id}" src="" alt="${I18N[currentLang].fileSelected}" />
               <div class="file-info">
                 <div class="file-name" id="fname_${q.id}"></div>
                 <div class="file-size" id="fsize_${q.id}"></div>
               </div>
-              <button type="button" class="btn-remove-file" onclick="removeFile('${q.id}')" title="Eliminar archivo">
+              <button type="button" class="btn-remove-file" onclick="removeFile('${q.id}')" title="${I18N[currentLang].removeFileTitle}">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -526,6 +530,10 @@ function updateQuestionTexts() {
         const dropHint = document.getElementById(`drop_hint_${q.id}`);
         if (dropTitle) dropTitle.innerText = I18N[currentLang].dropzoneTitle;
         if (dropHint) dropHint.innerText = I18N[currentLang].dropzoneHint;
+        const removeBtn = block.querySelector('.btn-remove-file');
+        if (removeBtn) removeBtn.title = I18N[currentLang].removeFileTitle;
+        const thumb = document.getElementById(`thumb_${q.id}`);
+        if (thumb) thumb.alt = I18N[currentLang].fileSelected;
       }
       else if (q.tipo === 'text' || q.tipo === 'textarea') {
         const input = block.querySelector('input, textarea');
