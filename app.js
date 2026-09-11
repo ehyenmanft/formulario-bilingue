@@ -726,12 +726,77 @@ async function handleFormSubmit(event) {
   };
 
   try {
-    await fetch(FORM_CONFIG.webhookUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    // 1. Enviar a Supabase si está configurado
+    if (FORM_CONFIG.supabaseUrl && FORM_CONFIG.supabaseAnonKey) {
+      try {
+        let receiptUrl = '';
+        // Si hay archivo comprobante y bucket de storage disponible
+        const fileEntry = respuestas.find(r => r.tipo === 'file' && r.archivo);
+        if (fileEntry && fileEntry.archivo) {
+          try {
+            const fileName = `${Date.now()}_${fileEntry.archivo.nombre.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+            const fileBlob = await (await fetch(`data:${fileEntry.archivo.tipoMime};base64,${fileEntry.archivo.base64}`)).blob();
+            const storageRes = await fetch(`${FORM_CONFIG.supabaseUrl}/storage/v1/object/comprobantes/${fileName}`, {
+              method: 'POST',
+              headers: {
+                'apikey': FORM_CONFIG.supabaseAnonKey,
+                'Authorization': `Bearer ${FORM_CONFIG.supabaseAnonKey}`,
+                'Content-Type': fileEntry.archivo.tipoMime
+              },
+              body: fileBlob
+            });
+            if (storageRes.ok) {
+              receiptUrl = `${FORM_CONFIG.supabaseUrl}/storage/v1/object/public/comprobantes/${fileName}`;
+            }
+          } catch (storageErr) {
+            console.warn("Storage upload fallback:", storageErr);
+          }
+        }
+
+        // Construir fila para la tabla respuestas_formulario
+        const rowData = {
+          idioma: currentLang.toUpperCase(),
+          nombre: (respuestas.find(r => r.id === 'nombre') || {}).valor || '',
+          email: (respuestas.find(r => r.id === 'email') || {}).valor || '',
+          telefono: (respuestas.find(r => r.id === 'telefono') || {}).valor || '',
+          fecha_comprobante: (respuestas.find(r => r.id === 'fecha') || {}).valor || null,
+          tipo_pago: (respuestas.find(r => r.id === 'tipo_pago') || {}).valor || '',
+          comprobante_url: receiptUrl || (fileEntry ? fileEntry.archivo?.nombre : ''),
+          respuestas_completas: payload
+        };
+
+        // Mapear campos biométricos / anamnesis adicionales si existen
+        respuestas.forEach(r => {
+          if (r.id && rowData[r.id] === undefined && r.tipo !== 'file') {
+            rowData[r.id] = Array.isArray(r.valor) ? r.valor.join(', ') : r.valor;
+          }
+        });
+
+        await fetch(`${FORM_CONFIG.supabaseUrl}/rest/v1/${FORM_CONFIG.supabaseTable}`, {
+          method: 'POST',
+          headers: {
+            'apikey': FORM_CONFIG.supabaseAnonKey,
+            'Authorization': `Bearer ${FORM_CONFIG.supabaseAnonKey}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=minimal'
+          },
+          body: JSON.stringify(rowData)
+        });
+        console.log("Respuesta guardada en Supabase 'Amazona Fitness' con éxito.");
+      } catch (sbError) {
+        console.warn("Error enviando a Supabase (continuando con Webhook):", sbError);
+      }
+    }
+
+    // 2. Enviar a Google Apps Script Webhook (hoja de cálculo de respaldo)
+    if (FORM_CONFIG.webhookUrl) {
+      await fetch(FORM_CONFIG.webhookUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+    }
 
     document.getElementById('dynamic-form').style.display = 'none';
     document.getElementById('success-card').style.display = 'block';
