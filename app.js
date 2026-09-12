@@ -753,24 +753,63 @@ async function handleFormSubmit(event) {
           }
         }
 
-        // Construir fila para la tabla respuestas_formulario
-        const rowData = {
-          idioma: currentLang.toUpperCase(),
-          nombre: (respuestas.find(r => r.id === 'nombre') || {}).valor || '',
-          email: (respuestas.find(r => r.id === 'email') || {}).valor || '',
-          telefono: (respuestas.find(r => r.id === 'telefono') || {}).valor || '',
-          fecha_comprobante: (respuestas.find(r => r.id === 'fecha') || {}).valor || null,
-          tipo_pago: (respuestas.find(r => r.id === 'tipo_pago') || {}).valor || '',
-          comprobante_url: receiptUrl || (fileEntry ? fileEntry.archivo?.nombre : ''),
-          respuestas_completas: payload
+        // Helper para obtener valor de respuesta
+        const getVal = (id) => {
+          const item = respuestas.find(r => r.id === id);
+          if (!item) return null;
+          return Array.isArray(item.valor) ? item.valor.join(', ') : item.valor;
         };
 
-        // Mapear campos biométricos / anamnesis adicionales si existen
-        respuestas.forEach(r => {
-          if (r.id && rowData[r.id] === undefined && r.tipo !== 'file') {
-            rowData[r.id] = Array.isArray(r.valor) ? r.valor.join(', ') : r.valor;
-          }
-        });
+        // Construir fila estructurada para la tabla respuestas_formulario
+        const rowData = {
+          idioma: currentLang.toUpperCase(),
+          nombre_completo: getVal('q_0') || getVal('nombre') || 'Atleta Sin Nombre',
+          edad: getVal('q_1') ? parseInt(getVal('q_1'), 10) || null : null,
+          genero: getVal('q_2') || '',
+          email: getVal('q_3') || getVal('email') || '',
+          email_direccion: getVal('q_3') || getVal('email') || '',
+          telefono: getVal('q_4') || getVal('telefono') || '',
+          pais_ciudad: getVal('q_5') || '',
+          estatura_m: getVal('q_6') ? parseFloat(getVal('q_6')) || null : null,
+          peso_actual_kg: getVal('q_7') ? parseFloat(getVal('q_7')) || null : null,
+          peso_ideal_kg: getVal('q_8') ? parseFloat(getVal('q_8')) || null : null,
+          objetivo_principal: getVal('q_10') || '',
+          importancia_objetivo: getVal('q_11') ? parseInt(getVal('q_11'), 10) || null : null,
+          motivacion: getVal('q_12') || '',
+          fecha_limite: getVal('q_13') || '',
+          objetivos_especificos: getVal('q_14') || '',
+          disciplina_deportiva: getVal('q_16') || '',
+          nivel_experiencia: getVal('q_17') || '',
+          dias_entrenamiento: getVal('q_18') || '',
+          experiencia_pesas: getVal('q_19') || '',
+          deporte_regular: getVal('q_20') || '',
+          lugar_entrenamiento: getVal('q_21') || '',
+          equipo_casa: getVal('q_22') || '',
+          tiempo_ejercicio: getVal('q_23') || '',
+          tipo_ejercicio_actual: getVal('q_25') || '',
+          horas_sueno: getVal('q_26') || '',
+          nivel_estres: getVal('q_27') || '',
+          consumo_agua_litros: getVal('q_28') || '',
+          consumo_cafe: getVal('q_29') || '',
+          dieta_actual: getVal('q_31') || '',
+          alergias_alimenticias: getVal('q_32') || '',
+          alimentos_evitar: getVal('q_33') || '',
+          alimentos_preferidos: getVal('q_34') || '',
+          horarios_comidas: getVal('q_35') || '',
+          reduccion_macros_comodo: getVal('q_36') || '',
+          condicion_medica: getVal('q_38') || '',
+          medicamentos: getVal('q_39') || '',
+          tratamiento_medico: getVal('q_40') || '',
+          problemas_previos: getVal('q_41') || '',
+          lesion_condicion: getVal('q_42') || '',
+          suplementos_actuales: getVal('q_44') || '',
+          interes_suplementacion: getVal('q_45') || '',
+          alergia_suplementos: getVal('q_46') || '',
+          consentimiento_testimonios: getVal('q_48') || '',
+          metodo_pago: getVal('q_50') || getVal('tipo_pago') || '',
+          comprobante_url: receiptUrl || (fileEntry ? fileEntry.archivo?.nombre : ''),
+          raw_data: payload
+        };
 
         await fetch(`${FORM_CONFIG.supabaseUrl}/rest/v1/${FORM_CONFIG.supabaseTable}`, {
           method: 'POST',
